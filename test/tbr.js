@@ -10,13 +10,11 @@ var TimeBucketReduce = require('time-bucket-reduce')
 
 var LTBR = require('../')
 
-
-
 var MAX = undefined
 tape('simple', function (t) {
   var _db = level('simple-tbr', {encoding: 'json'})
   var db = sublevel(_db)
-  var tbr = LTBR(db)
+  var tbr = LTBR(db).addQuery({name: 'foo'})
 
   var start = 1413213123
 
@@ -27,25 +25,12 @@ tape('simple', function (t) {
 
   tbr.on('drain', function () {
 
-//  var TBR = TimeBucketReduce({
-//      map: function (data) {
-//        throw new Error('never call this')
-//      },
-//      reduce: function (a, b) {
-//        return (a || 0) + b
-//      },
-//      output: function (value, start, type) {
-//        throw new Error('should not happen')
-//      }
-//    })
-//
-
     _db.close(function (err) {
       if(err) throw err
 
       var db2 = sublevel(level('simple-tbr', {encoding: 'json', clean: false}))
 
-      var tbr2 = LTBR(db2)
+      var tbr2 = LTBR(db2).addQuery({name: 'foo'})
 
       tbr2.on('ready', function () {
         console.log(tbr.dump())
