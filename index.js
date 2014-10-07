@@ -1,5 +1,3 @@
-//var config = require('./config')
-
 var TimeBucketReduce = require('time-bucket-reduce')
 var tp = require('time-period')
 var batchqueue = require('batchqueue')
@@ -46,27 +44,28 @@ function revive(db, query, period) {
 }
 
 
-var init = function (db, TBR, query) {
-  return cont.series(tp.periods.map(function (period, i) {
-    return function (cb) {
-      pull(
-        revive(db, query, period),
-        pull.drain(function (data) {
-          console.log('revive', period, i, data)
-          TBR.rollup(i - 1, new Date(data.key[2]), data.value)
-        }, function () {
-          cb()
-        })
-      )
-    }
-  }))
-}
-
 exports = module.exports = function (db, request) {
 
   var emitter = new EventEmitter(), latest = 0
 
   var query = 'foo'
+
+  function init (db, TBR, query) {
+    return cont.series(tp.periods.map(function (period, i) {
+      return function (cb) {
+        pull(
+          revive(db, query, period),
+          pull.drain(function (data) {
+            var start = data.key[2]
+            latest = Math.max(latest, start)
+            TBR.rollup(i - 1, new Date(start), data.value)
+          }, function () {
+            cb()
+          })
+        )
+      }
+    }))
+  }
 
   var queue = batchqueue(function (batch, cb) {
     db.batch(batch, function () {
@@ -88,9 +87,6 @@ exports = module.exports = function (db, request) {
         return (a || 0) + b
       },
       output: function (value, start, type) {
-//        Hours', 4406400000
-//        if(type === 'Hours' && start >= 4406400000)
-//          console.log('OUTPUT', type, start, value)
         queue({
           key: [query, type, start], value: value,
           ts: start, type: 'put'
@@ -101,7 +97,6 @@ exports = module.exports = function (db, request) {
   emitter.add = TBR
 
   emitter.dump = TBR.dump
-
 
   function initialize (query) {
     init(db, TBR, query) (function (err) {
@@ -116,3 +111,4 @@ exports = module.exports = function (db, request) {
 
 //exports.latest = latest
 exports.revive = revive
+
