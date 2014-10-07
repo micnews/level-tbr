@@ -1,12 +1,11 @@
 var TimeBucketReduce = require('time-bucket-reduce')
-var tp = require('time-period')
-var batchqueue = require('batchqueue')
-var peek = require('level-peek')
-var pull = require('pull-stream')
-var pl = require('pull-level')
-var cont = require('cont')
-var tp = require('time-period')
-var EventEmitter = require('events').EventEmitter
+var batchqueue       = require('batchqueue')
+var peek             = require('level-peek')
+var pull             = require('pull-stream')
+var pl               = require('pull-level')
+var cont             = require('cont')
+var tp               = require('time-period')
+var EventEmitter     = require('events').EventEmitter
 
 function last (db, query, period) {
   return function (cb) {
@@ -17,12 +16,10 @@ function last (db, query, period) {
   }
 }
 
-const QUERY = 'foo'
 const MAX = Number.MAX_VALUE
 
 function revive(db, query, period) {
   var defer = pull.defer()
-  query = QUERY
   peek.last(db, {
     gte: [query, period, 0],
     lt: [query, period, MAX]
@@ -47,7 +44,7 @@ function revive(db, query, period) {
 exports = module.exports = function (db, request) {
 
   var emitter = new EventEmitter(), latest = 0
-
+  var queries = emitter.queries = {}
   var query = 'foo'
 
   function init (db, TBR, query) {
@@ -58,7 +55,7 @@ exports = module.exports = function (db, request) {
           pull.drain(function (data) {
             var start = data.key[2]
             latest = Math.max(latest, start)
-            TBR.rollup(i - 1, new Date(start), data.value)
+            queries[query].rollup(i - 1, new Date(start), data.value)
           }, function () {
             cb()
           })
@@ -79,32 +76,51 @@ exports = module.exports = function (db, request) {
     else emitter.emit('drain')
   })
 
-  var TBR = TimeBucketReduce({
-      map: function (data) {
-        return data.value
-      },
-      reduce: function (a, b) {
-        return (a || 0) + b
-      },
-      output: function (value, start, type) {
-        queue({
-          key: [query, type, start], value: value,
-          ts: start, type: 'put'
-        })
-      }
-    })
 
-  emitter.add = TBR
+  emitter.add = function (data) {
+    for(var k in queries)
+      queries[k](data)
+  }
 
-  emitter.dump = TBR.dump
+  emitter.dump = function () {
+    var o = {}
+    for(var k in queries)
+      o[k] = queries[k].dump()
+    return o
+  }
 
-  function initialize (query) {
-    init(db, TBR, query) (function (err) {
+  function initialize () {
+    var o = {}
+    for(var q in queries)
+      o[q] = init(db, queries[q], q)
+
+    cont.para(o) (function (err) {
       emitter.emit('ready')
     })
   }
 
-  initialize()
+  setImmediate(initialize)
+
+  emitter.addQuery = function (opts) {
+    if(!opts) throw new Error('must have opts')
+    if(!opts.name) throw new Error('must have query name')
+    var name = opts.name
+    queries[name] = TimeBucketReduce({
+        map: opts.map || function (data) {
+          return data.value
+        },
+        reduce: opts.reduce || function (a, b) {
+          return (a || 0) + b
+        },
+        output: function (value, start, type) {
+          queue({
+            key: [query, type, start], value: value,
+            ts: start, type: 'put'
+          })
+        }
+      })
+    return emitter
+  }
 
   return emitter
 }
