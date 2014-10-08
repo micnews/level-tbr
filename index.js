@@ -43,9 +43,11 @@ function revive(db, query, period) {
 
 exports = module.exports = function (db, request) {
 
+  if('function' !== typeof request)
+    throw new Error('must provide request(latest) function')
+
   var emitter = new EventEmitter(), latest = 0
   var queries = emitter.queries = {}
-  var query = 'foo'
 
   function init (db, TBR, query) {
     return cont.series(tp.periods.map(function (period, i) {
@@ -99,6 +101,15 @@ exports = module.exports = function (db, request) {
     })
   }
 
+  emitter.on('ready', function reconnect () {
+    pull(
+      request(latest),
+      pull.drain(emitter.add, function () {
+        console.log('ended')
+      })
+    )
+  })
+
   setImmediate(initialize)
 
   emitter.addQuery = function (opts) {
@@ -114,9 +125,13 @@ exports = module.exports = function (db, request) {
         },
         output: function (value, start, type) {
           queue({
-            key: [query, type, start], value: value,
+            key: [name, type, start], value: value,
             ts: start, type: 'put'
           })
+
+          emitter.emit(type, name, value, start)
+          emitter.emit(name, type, value, start)
+          emitter.emit(name+':'+type, name, value, start, type)
         }
       })
     return emitter
@@ -125,6 +140,5 @@ exports = module.exports = function (db, request) {
   return emitter
 }
 
-//exports.latest = latest
 exports.revive = revive
 
