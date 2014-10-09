@@ -8,13 +8,14 @@
     "url": "git://github.com/dominictarr/level-tbr.git"
   },
   "dependencies": {
-    "pull-stream": "~2.25.0",
+    "pull-stream": "~2.26.0",
     "time-period": "~1.1.0",
     "time-bucket-reduce": "~0.1.2",
     "batchqueue": "~1.0.0",
     "level-peek": "~2.0.0",
     "pull-level": "~1.1.12",
-    "cont": "~1.0.1"
+    "cont": "~1.0.1",
+    "ltgt": "~2.0.0"
   },
   "devDependencies": {
     "tap": "~0.4.13",
