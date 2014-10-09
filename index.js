@@ -5,6 +5,7 @@ var pull             = require('pull-stream')
 var pl               = require('pull-level')
 var cont             = require('cont')
 var tp               = require('time-period')
+var ltgt             = require('ltgt')
 var EventEmitter     = require('events').EventEmitter
 
 function last (db, query, period) {
@@ -105,7 +106,7 @@ exports = module.exports = function (db, request) {
     pull(
       request(latest),
       pull.drain(emitter.add, function () {
-        console.log('ended')
+        emitter.emit('ended')
       })
     )
   })
@@ -135,6 +136,27 @@ exports = module.exports = function (db, request) {
         }
       })
     return emitter
+  }
+
+  emitter.query = function (opts) {
+    var name   = opts && opts.name
+    var period = opts && opts.period
+
+    if(!name)
+      throw new Error('must provide period')
+
+    if(!~tp.periods.indexOf(period))
+      throw new Error('period must be one of:' + JSON.stringify(tp.periods))
+
+    function map (key) {
+      return [name, period, key]
+    }
+
+    opts = ltgt.toLtgt(opts, opts, map, 0, Number.MAX_VALUE)
+
+
+    console.log(opts)
+    return pl.read(db, opts)
   }
 
   return emitter
