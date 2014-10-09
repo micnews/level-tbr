@@ -1,8 +1,8 @@
 
-var tape             = require('tape')
-var level            = require('level-test')()
-var sublevel         = require('level-sublevel/bytewise')
-var pull             = require('pull-stream')
+var tape     = require('tape')
+var level    = require('level-test')()
+var sublevel = require('level-sublevel/bytewise')
+var pull     = require('pull-stream')
 
 var LTBR = require('../')
 
