@@ -3,14 +3,9 @@ var tape             = require('tape')
 var level            = require('level-test')()
 var sublevel         = require('level-sublevel/bytewise')
 var pull             = require('pull-stream')
-var pl               = require('pull-level')
-var cont             = require('cont')
-var tp               = require('time-period')
-var TimeBucketReduce = require('time-bucket-reduce')
 
 var LTBR = require('../')
 
-var MAX = undefined
 tape('simple', function (t) {
   var _db = level('simple-tbr', {encoding: 'json'})
   var db = sublevel(_db)
