@@ -159,6 +159,14 @@ exports = module.exports = function (db, request) {
     return pl.read(db, opts)
   }
 
+  //expose over multilevel.
+  emitter.install = function (db) {
+    db.methods.createQueryStream = {type: 'readable'}
+    db.createQueryStream = function (opts) {
+      return toStream.source(emitter.query(opts))
+    }
+  }
+
   return emitter
 }
 
