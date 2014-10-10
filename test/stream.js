@@ -33,7 +33,7 @@ tape('simple', function (t) {
   var tbr = LTBR(db, request).addQuery({name: 'foo'})
 
   var sum = 0
-  
+
   pull(
     tbr.query({name: 'foo', period: 'Hours', tail: true}),
     pull.drain(function (data) {
@@ -41,6 +41,7 @@ tape('simple', function (t) {
       sum += data.value
       if(+data.key[2] >= 4431600000) {
         console.log(sum)
+        tbr.close()
         t.equal(sum, 302191)
         t.end()
       }
