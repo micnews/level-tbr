@@ -18,10 +18,10 @@ function last (db, query, period) {
   }
 }
 
-const MAX = Number.MAX_VALUE
+//the year 19809...
+const MAX = 0x1fffffffffff
 
 function toTimestamp(d) {
-  return d
   if(null == d) return d
   var e = new Date(d)
   if('Invalid Date' == e) {
