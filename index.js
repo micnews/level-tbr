@@ -20,27 +20,6 @@ function last (db, query, period) {
 
 const MAX = Number.MAX_VALUE
 
-function revive(db, query, period) {
-  var defer = pull.defer()
-  peek.last(db, {
-    gte: [query, period, 0],
-    lt: [query, period, MAX]
-  }, function (err, key, value) {
-    //get the start of the next group.
-    if(!key) return defer.resolve(pull.empty())
-
-    var startNext = tp.ceil(key[2], period)
-    var lowerPeriod = tp.periods[tp.periods.indexOf(period) - 1]
-    defer.resolve(
-      pl.read(db, {
-        gte: [query, lowerPeriod, startNext],
-        lt:  [query, lowerPeriod, MAX]
-      })
-    )
-  })
-
-  return defer
-}
 
 
 exports = module.exports = function (db, request) {
@@ -50,6 +29,34 @@ exports = module.exports = function (db, request) {
 
   var emitter = new EventEmitter(), latest = 0
   var queries = emitter.queries = {}
+
+  function revive(db, query, period) {
+    var defer = pull.defer()
+    peek.last(db, {
+      gte: [query, period, 0],
+      lt: [query, period, undefined]
+    }, function (err, key, value) {
+      //get the start of the next group.
+      if(!key) return defer.resolve(pull.empty())
+      var startNext = tp.ceil(key[2], period)
+      var lowerPeriod = tp.periods[tp.periods.indexOf(period) - 1]
+
+      latest = Math.max(latest, key[2])
+      defer.resolve(
+        pull(
+          pl.read(db, {
+            gte: [query, lowerPeriod, startNext],
+            lt:  [query, lowerPeriod, undefined]
+          }),
+          pull.through(console.log)
+        )
+
+      )
+    })
+
+    return defer
+  }
+
 
   function init (db, TBR, query) {
     return cont.series(tp.periods.map(function (period, i) {
@@ -104,10 +111,12 @@ exports = module.exports = function (db, request) {
   }
 
   emitter.on('ready', function reconnect () {
+    emitter.emit('reconnect')
     pull(
       request(latest),
       pull.drain(emitter.add, function () {
         emitter.emit('ended')
+        setTimeout(reconnect, 1000 + Math.random() * 3000)
       })
     )
   })
@@ -153,10 +162,8 @@ exports = module.exports = function (db, request) {
       return [name, period, key]
     }
 
-    opts = ltgt.toLtgt(opts, opts, map, 0, Number.MAX_VALUE)
+    opts = ltgt.toLtgt(opts, opts, map, 0, undefined)
 
-
-    console.log(opts)
     return pl.read(db, opts)
   }
 
@@ -170,6 +177,4 @@ exports = module.exports = function (db, request) {
 
   return emitter
 }
-
-exports.revive = revive
 
