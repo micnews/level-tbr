@@ -56,7 +56,7 @@ exports = module.exports = function (db, request) {
         pull(
           pl.read(db, {
             gte: [query, lowerPeriod, startNext],
-            lt:  [query, lowerPeriod, undefined]
+            lt:  [query, lowerPeriod, MAX]
           }),
           pull.through(console.log)
         )
@@ -183,7 +183,7 @@ exports = module.exports = function (db, request) {
       return [name, period, toTimestamp(key)]
     }
 
-    opts = ltgt.toLtgt(opts, opts, map, 0, undefined)
+    opts = ltgt.toLtgt(opts, opts, map, 0, MAX)
 
     return pl.read(db, opts)
   }
