@@ -43,6 +43,8 @@ tape('simple', function (t) {
       tbr2.on('ready', function () {
         console.log(tbr.dump())
         console.log(tbr2.dump())
+        tbr.close()
+        tbr2.close()
         t.end()
       })
 
