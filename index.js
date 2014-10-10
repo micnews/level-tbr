@@ -20,7 +20,17 @@ function last (db, query, period) {
 
 const MAX = Number.MAX_VALUE
 
-
+function toTimestamp(d) {
+  return d
+  if(null == d) return d
+  var e = new Date(d)
+  if('Invalid Date' == e) {
+    e = new Date(+d)
+    if('Invalid Date' == e)
+      throw new Error('Invalid Date:' + d)
+  }
+  return +e
+}
 
 exports = module.exports = function (db, request) {
 
@@ -110,15 +120,26 @@ exports = module.exports = function (db, request) {
     })
   }
 
-  emitter.on('ready', function reconnect () {
-    emitter.emit('reconnect')
+  var started = false
+  function start () {
+    if(emitter.closed) return
+    emitter.emit('reconnect', emitter.closed)
     pull(
       request(latest),
       pull.drain(emitter.add, function () {
         emitter.emit('ended')
-        setTimeout(reconnect, 1000 + Math.random() * 3000)
+
+        if(emitter.closed) return
+        console.log('reconnect')
+        setTimeout(start, 1000 + Math.random() * 3000)
       })
     )
+  }
+
+  emitter.on('ready', function () {
+    if(started) return
+    started = true
+    start()
   })
 
   setImmediate(initialize)
@@ -159,7 +180,7 @@ exports = module.exports = function (db, request) {
       throw new Error('period must be one of:' + JSON.stringify(tp.periods))
 
     function map (key) {
-      return [name, period, key]
+      return [name, period, toTimestamp(key)]
     }
 
     opts = ltgt.toLtgt(opts, opts, map, 0, undefined)
@@ -173,6 +194,10 @@ exports = module.exports = function (db, request) {
     db.createQueryStream = function (opts) {
       return toStream.source(emitter.query(opts))
     }
+  }
+
+  emitter.close = function () {
+    emitter.closed = true
   }
 
   return emitter
