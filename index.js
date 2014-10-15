@@ -57,8 +57,7 @@ exports = module.exports = function (db, request) {
           pl.read(db, {
             gte: [query, lowerPeriod, startNext],
             lt:  [query, lowerPeriod, MAX]
-          }),
-          pull.through(console.log)
+          })
         )
 
       )
